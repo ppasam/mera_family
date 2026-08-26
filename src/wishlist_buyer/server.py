@@ -1,0 +1,205 @@
+"""Локальный веб-интерфейс поверх модуля.
+
+Демонстрационная страница `demo/index.html` умеет работать в двух режимах. Если
+её открыли файлом, она показывает сохранённый ответ витрины. Если её отдал этот
+сервер — она спрашивает `/api/search`, и поиск идёт по-настоящему: тот же
+браузер, та же сессия клиента, тот же разбор `composer-api`.
+
+Браузер живёт в отдельном потоке со своим циклом событий и переиспользуется
+между запросами. Открывать сессию на каждый поиск нельзя: витрина видит серию
+запусков вместо непрерывной работы, а счётчик запросов обнуляется, и лимит темпа
+перестаёт что-либо ограничивать.
+
+Сервер слушает только localhost и предназначен для одного человека за своим
+компьютером — ни авторизации, ни защиты от параллельных запросов здесь нет.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import threading
+from decimal import Decimal
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from typing import Any
+from urllib.parse import parse_qs, urlparse
+
+from .adapters.ozon import OzonAdapter
+from .audit import Audit
+from .browser import ChallengeDetected, NotAuthenticated, Session, open_session
+from .config import Settings
+from .models import Offer, WishItem
+from .rank import rank
+
+DEMO_PAGE = Path(__file__).resolve().parents[2] / "demo" / "index.html"
+
+
+class BrowserWorker:
+    """Держит одну браузерную сессию в фоновом потоке.
+
+    Сессия открывается при первом запросе и живёт до остановки сервера, чтобы
+    витрина видела одного посетителя, а не череду новых.
+    """
+
+    def __init__(self, settings: Settings) -> None:
+        self.settings = settings
+        self.adapter = OzonAdapter()
+        self.audit = Audit(settings.audit_dir)
+        self._loop = asyncio.new_event_loop()
+        self._thread = threading.Thread(target=self._run_loop, daemon=True)
+        self._session: Session | None = None
+        self._exit: Any = None
+        self._lock = threading.Lock()
+        self._thread.start()
+
+    def _run_loop(self) -> None:
+        asyncio.set_event_loop(self._loop)
+        self._loop.run_forever()
+
+    def _submit(self, coro):
+        return asyncio.run_coroutine_threadsafe(coro, self._loop).result()
+
+    async def _ensure_session(self) -> Session:
+        if self._session is None:
+            # Контекстный менеджер держим вручную: сессия должна пережить запрос.
+            self._exit = open_session(self.settings, require_auth=False)
+            self._session = await self._exit.__aenter__()
+        return self._session
+
+    def search(self, query: str, *, top: int = 3, limit: int = 24) -> dict[str, Any]:
+        """Ищет товар и возвращает данные в том же виде, что и сборщик демо."""
+        with self._lock:  # один поиск за раз: браузер не умеет параллельно
+            return self._submit(self._search(query, top=top, limit=limit))
+
+    async def _search(self, query: str, *, top: int, limit: int) -> dict[str, Any]:
+        session = await self._ensure_session()
+        wish = WishItem(query=query)
+
+        offers = await self.adapter.search(session, wish, limit=limit)
+        self.audit.searched(wish, len(offers))
+
+        if not offers:
+            return {"query": query, "marketplace": "ozon", "items": [], "live": True}
+
+        scored = rank(offers, top=top)
+        self.audit.offered(wish, scored)
+        ranked = {item.offer.sku: (position, item) for position, item in enumerate(scored, 1)}
+
+        items = [_as_json(offer, ranked.get(offer.sku)) for offer in offers]
+        items.sort(key=lambda item: (item["rank"] or 99, item["price"]))
+        return {"query": query, "marketplace": "ozon", "items": items, "live": True}
+
+    def close(self) -> None:
+        if self._session is not None:
+            self._submit(self._exit.__aexit__(None, None, None))
+            self._session = None
+        self._loop.call_soon_threadsafe(self._loop.stop)
+
+
+def _as_json(offer: Offer, ranked: tuple[int, Any] | None) -> dict[str, Any]:
+    """Приводит предложение к структуре, которую понимает страница демо."""
+    position, scored = ranked if ranked else (None, None)
+    return {
+        "sku": offer.sku,
+        "title": offer.title,
+        "url": str(offer.url),
+        "price": int(offer.price),
+        "priceOriginal": int(offer.price_original) if offer.price_original else None,
+        "discount": offer.discount_percent,
+        "rating": offer.rating,
+        "reviews": offer.reviews_count,
+        "seller": (
+            {
+                "name": offer.seller.name,
+                "official": offer.seller.is_official,
+                "brandVerified": offer.seller.brand_verified,
+            }
+            if offer.seller
+            else None
+        ),
+        "delivery": offer.delivery.date_text if offer.delivery else None,
+        # Живой поиск отдаёт ссылку на картинку: страницу отдаёт свой же сервер,
+        # и загрузка с домена витрины ему не запрещена.
+        "image": str(offer.image_url) if offer.image_url else None,
+        "recommended": scored is not None,
+        "rank": position,
+        "score": scored.score if scored else None,
+        "reasons": scored.reasons if scored else [],
+        "warnings": scored.warnings if scored else [],
+    }
+
+
+class Handler(BaseHTTPRequestHandler):
+    worker: BrowserWorker
+
+    def do_GET(self) -> None:
+        route = urlparse(self.path)
+
+        if route.path in ("/", "/index.html"):
+            self._send_page()
+        elif route.path == "/api/search":
+            query = (parse_qs(route.query).get("q") or [""])[0].strip()
+            self._send_search(query)
+        else:
+            self._send_json({"error": "не найдено"}, status=404)
+
+    def _send_page(self) -> None:
+        if not DEMO_PAGE.exists():
+            self._send_json(
+                {"error": "страница демо не собрана: python scripts/build_demo.py"}, status=500
+            )
+            return
+        body = DEMO_PAGE.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _send_search(self, query: str) -> None:
+        if not query:
+            self._send_json({"error": "пустой запрос"}, status=400)
+            return
+        try:
+            self._send_json(self.worker.search(query))
+        except NotAuthenticated as exc:
+            self._send_json({"error": str(exc)}, status=401)
+        except ChallengeDetected as exc:
+            self._send_json({"error": str(exc)}, status=429)
+        except Exception as exc:  # витрина могла измениться или сеть отвалиться
+            self._send_json({"error": f"поиск не удался: {exc}"}, status=500)
+
+    def _send_json(self, payload: dict[str, Any], *, status: int = 200) -> None:
+        body = json.dumps(payload, ensure_ascii=False, default=_encode).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, fmt: str, *args: Any) -> None:
+        """Свой формат лога: строка на запрос вместо шумного стандартного."""
+        print(f"  {fmt % args}")
+
+
+def _encode(value: Any) -> Any:
+    if isinstance(value, Decimal):
+        return int(value)
+    return str(value)
+
+
+def serve(settings: Settings, *, host: str = "127.0.0.1", port: int = 8765) -> None:
+    """Поднимает локальный сервер до Ctrl+C."""
+    worker = BrowserWorker(settings)
+    Handler.worker = worker
+    httpd = ThreadingHTTPServer((host, port), Handler)
+    try:
+        yield_url = f"http://{host}:{port}/"
+        print(f"Интерфейс подбора: {yield_url}\nОстановить — Ctrl+C\n")
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        print("\nОстанавливаю…")
+    finally:
+        httpd.server_close()
+        worker.close()

@@ -84,6 +84,20 @@ def buy(
 
 
 @app.command()
+def serve(
+    port: Annotated[int, typer.Option(help="Порт локального сервера")] = 8765,
+) -> None:
+    """Поднимает локальную страницу подбора с настоящим поиском.
+
+    Та же страница, что и демо, но запросы идут на живую витрину через браузер
+    клиента. Слушает только localhost.
+    """
+    from .server import serve as run_server
+
+    run_server(_settings(), port=port)
+
+
+@app.command()
 def run(
     wishlist_file: Annotated[Path | None, typer.Option(help="Файл списка желаний")] = None,
     buy_mode: Annotated[

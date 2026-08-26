@@ -50,3 +50,17 @@ def test_walk_pauses_between_items():
     source = inspect.getsource(cli._walk)
     assert "between_items" in source
     assert "asyncio.sleep" in source
+
+
+def test_server_reuses_one_browser_session():
+    """Сервер держит одну сессию на всё время работы.
+
+    Открывать браузер на каждый HTTP-запрос — то же самое, что открывать его на
+    каждый товар списка: витрина видит череду новых посетителей, а счётчик
+    запросов обнуляется.
+    """
+    from wishlist_buyer import server
+
+    source = inspect.getsource(server.BrowserWorker)
+    assert "if self._session is None" in source, "сессия должна создаваться один раз"
+    assert "open_session" in source
