@@ -1,9 +1,8 @@
 """Локальный веб-интерфейс поверх модуля.
 
-Демонстрационная страница `demo/index.html` умеет работать в двух режимах. Если
-её открыли файлом, она показывает сохранённый ответ витрины. Если её отдал этот
-сервер — она спрашивает `/api/search`, и поиск идёт по-настоящему: тот же
-браузер, та же сессия клиента, тот же разбор `composer-api`.
+Отдаёт страницу `web/index.html` и обслуживает её запросы. Поиск настоящий: тот
+же браузер, та же сессия клиента, тот же разбор `composer-api`, что и в командах
+терминала. Введённый товар попадает в список желаний, выбор клиента — в журнал.
 
 Браузер живёт в отдельном потоке со своим циклом событий и переиспользуется
 между запросами. Открывать сессию на каждый поиск нельзя: витрина видит серию
@@ -32,7 +31,7 @@ from .config import Settings, append_wish, load_wishlist
 from .models import Offer, WishItem
 from .rank import rank
 
-DEMO_PAGE = Path(__file__).resolve().parents[2] / "demo" / "index.html"
+PAGE = Path(__file__).resolve().parents[2] / "web" / "index.html"
 
 
 class BrowserWorker:
@@ -71,7 +70,7 @@ class BrowserWorker:
         return self._session
 
     def search(self, query: str, *, top: int = 3, limit: int = 24) -> dict[str, Any]:
-        """Ищет товар и возвращает данные в том же виде, что и сборщик демо."""
+        """Ищет товар и отдаёт результат в том виде, который понимает страница."""
         with self._lock:  # один поиск за раз: браузер не умеет параллельно
             return self._submit(self._search(query, top=top, limit=limit))
 
@@ -148,7 +147,7 @@ class BrowserWorker:
 
 
 def _as_json(offer: Offer, ranked: tuple[int, Any] | None) -> dict[str, Any]:
-    """Приводит предложение к структуре, которую понимает страница демо."""
+    """Приводит предложение к структуре, которую понимает страница подбора."""
     position, scored = ranked if ranked else (None, None)
     return {
         "sku": offer.sku,
@@ -169,8 +168,8 @@ def _as_json(offer: Offer, ranked: tuple[int, Any] | None) -> dict[str, Any]:
             else None
         ),
         "delivery": offer.delivery.date_text if offer.delivery else None,
-        # Живой поиск отдаёт ссылку на картинку: страницу отдаёт свой же сервер,
-        # и загрузка с домена витрины ему не запрещена.
+        # Картинка отдаётся ссылкой: страницу открывает свой же сервер, и
+        # загрузка с домена витрины ему не запрещена.
         "image": str(offer.image_url) if offer.image_url else None,
         "recommended": scored is not None,
         "rank": position,
@@ -207,12 +206,10 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json({"error": "не найдено"}, status=404)
 
     def _send_page(self) -> None:
-        if not DEMO_PAGE.exists():
-            self._send_json(
-                {"error": "страница демо не собрана: python scripts/build_demo.py"}, status=500
-            )
+        if not PAGE.exists():
+            self._send_json({"error": f"страница интерфейса не найдена: {PAGE}"}, status=500)
             return
-        body = DEMO_PAGE.read_bytes()
+        body = PAGE.read_bytes()
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))

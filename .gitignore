@@ -27,7 +27,3 @@ Thumbs.db
 config/wishlist.yaml
 tests/fixtures/*.png
 audit/
-
-# демо: index.html и данные собираются скриптом build_demo.py
-demo/index.html
-demo/offers.json

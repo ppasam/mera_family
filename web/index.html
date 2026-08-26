@@ -90,7 +90,7 @@ body {
 
 .head p { margin: 0; color: var(--muted); font-size: .98rem; }
 
-.demo-flag {
+.mode-flag {
 	align-self: flex-start;
 	margin-top: .35rem;
 	font-family: var(--mono);
@@ -468,7 +468,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 	<header class="head">
 		<h1>Подбор покупок</h1>
 		<p>Введите товар из списка желаний — модуль найдёт его на маркетплейсе и предложит выгодные варианты.</p>
-		<span class="demo-flag">демонстрация на сохранённых данных</span>
+		<span class="mode-flag" id="mode-flag">поиск идёт в вашей сессии Ozon</span>
 	</header>
 
 	<form class="finder" id="finder">
@@ -485,7 +485,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 			</div>
 			<button type="submit" class="primary" id="go">Найти</button>
 		</div>
-		<p class="hint" id="hint">Другие площадки появятся, когда к ним напишут адаптер. Данные в демо — реальный ответ витрины Ozon по запросу «омега 3 solgar».</p>
+		<p class="hint" id="hint">Введённый товар попадёт в список желаний. Другие площадки появятся, когда к ним напишут адаптер.</p>
 		<div class="progress" id="progress">
 			<div class="tick" data-tick="0"><span class="dot"></span> открываю витрину в браузере клиента</div>
 			<div class="tick" data-tick="1"><span class="dot"></span> читаю ответ composer-api</div>
@@ -528,13 +528,10 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 	</div>
 </div>
 
-<script id="offers-data" type="application/json">/*OFFERS*/</script>
-
 <script>
 (() => {
 	"use strict";
 
-	const DATA = JSON.parse(document.getElementById("offers-data").textContent);
 	const money = (value) => value.toLocaleString("ru-RU") + " ₽";
 
 	const el = (id) => document.getElementById(id);
@@ -543,7 +540,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 	const toggleRest = el("toggle-rest");
 
 	let picked = null;
-	let currentQuery = DATA.query;
+	let currentQuery = "";
 
 	// ── список желаний ────────────────────────────────────────────────
 	// В живом режиме введённое в строку поиска попадает в тот же файл, с которым
@@ -701,7 +698,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 		el("summary-title").textContent = `Лучшие варианты: «${data.query}»`;
 		el("summary-meta").textContent =
 			`просмотрено ${data.items.length} предложений · отобрано ${recommended.length}` +
-			(data.live ? " · живой поиск" : " · сохранённые данные");
+			(data.live ? " · живой поиск" : "");
 
 		rest.classList.add("hidden");
 		toggleRest.classList.toggle("hidden", others.length === 0);
@@ -716,15 +713,18 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 		results.classList.remove("hidden");
 	}
 
-	// Живой режим доступен, когда страницу отдал локальный сервер модуля
-	// (`wishlist serve`). Открытая файлом или как артефакт, страница ходить на
-	// витрину не может: браузер такой запрос не выпустит, а витрина не ответит.
+	// Поиск делает модуль, а не страница: сама она обратиться к витрине не может
+	// — браузер такой запрос не выпустит, а маркетплейс не ответит чужой странице.
+	// Поэтому страница живёт только под своим сервером.
 	const LIVE = location.protocol.startsWith("http");
 
 	if (!LIVE) {
-		el("hint").textContent =
-			`Демонстрация: внутри страницы сохранён ответ витрины по запросу «${DATA.query}». ` +
-			`Настоящий поиск идёт из модуля — запустите «wishlist serve» и откройте localhost.`;
+		el("hint").innerHTML =
+			"Страница открыта файлом, поэтому искать нечем: поиск выполняет модуль. " +
+			"Запустите <code>wishlist serve</code> в каталоге проекта и откройте адрес, " +
+			"который он напечатает.";
+		el("go").disabled = true;
+		el("query").disabled = true;
 	}
 
 	async function fetchLive(query) {
@@ -764,24 +764,10 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 		let step = 0;
 		const timer = setInterval(() => {
 			if (step < ticks.length) ticks[step++].classList.add("done");
-		}, LIVE ? 1500 : 420);
+		}, 1500);
 
 		try {
-			let data = DATA;
-
-			if (LIVE) {
-				data = await fetchLive(query);
-			} else if (query.toLowerCase() !== DATA.query) {
-				// Честность важнее красивой картинки: подсовывать чужую выдачу
-				// вместо запрошенного товара нельзя.
-				showError(
-					`В демонстрации сохранён ответ витрины только по запросу «${DATA.query}», ` +
-					`искать «${query}» ей нечем — страница не связывается с маркетплейсом. ` +
-					`Чтобы поиск заработал по-настоящему, запустите модуль командой ` +
-					`<code>wishlist serve</code> и откройте страницу, которую он отдаст.`
-				);
-				return;
-			}
+			const data = await fetchLive(query);
 
 			ticks.forEach((tick) => tick.classList.add("done"));
 			currentQuery = data.query || query;
@@ -822,7 +808,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 				<li><span class="mark ok">2</span><span>Открывается корзина, состав заказа можно проверить.</span></li>
 				<li><span class="mark stop">3</span><span>Модуль останавливается. Оформление и оплату вы делаете сами — деньги он не списывает никогда.</span></li>
 			</ul>
-			<p>В демонстрации покупка не выполняется: страница работает на сохранённых данных и с маркетплейсом не связывается.</p>`;
+			<p>Пока модуль этот шаг не делает: кнопка показывает сценарий, но в корзину ничего не кладёт.</p>`;
 		receipt.classList.add("on");
 		receipt.scrollIntoView({ behavior: "smooth", block: "center" });
 		tray.classList.remove("up");
