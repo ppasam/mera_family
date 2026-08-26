@@ -192,7 +192,7 @@ class Handler(BaseHTTPRequestHandler):
     worker: BrowserWorker
 
     def do_GET(self) -> None:
-        route = urlparse(self.path)
+        route = urlparse(_decoded_path(self.path))
 
         if route.path in ("/", "/index.html"):
             self._send_page()
@@ -200,7 +200,12 @@ class Handler(BaseHTTPRequestHandler):
             query = (parse_qs(route.query).get("q") or [""])[0].strip()
             self._send_search(query)
         elif route.path == "/api/wishlist":
-            self._send_json({"wishlist": self.worker.wishlist()})
+            self._send_json(
+                {
+                    "wishlist": self.worker.wishlist(),
+                    "pauseBetweenItems": self.worker.settings.pace.between_items,
+                }
+            )
         elif route.path == "/api/forget":
             query = (parse_qs(route.query).get("q") or [""])[0]
             self._send_json(self.worker.forget(query))
@@ -252,6 +257,20 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt: str, *args: Any) -> None:
         """Свой формат лога: строка на запрос вместо шумного стандартного."""
         print(f"  {fmt % args}")
+
+
+def _decoded_path(path: str) -> str:
+    """Возвращает строку запроса в UTF-8.
+
+    Базовый обработчик разбирает строку HTTP-запроса как latin-1 — так велит
+    стандарт. Браузер кириллицу экранирует, и с ним всё в порядке, но запрос,
+    отправленный сырыми UTF-8 байтами (curl, скрипт), превратился бы в
+    «Ð¾Ð¼ÐµÐ³Ð°». Перекодируем обратно, если это возможно.
+    """
+    try:
+        return path.encode("latin-1").decode("utf-8")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return path
 
 
 def _encode(value: Any) -> Any:

@@ -123,3 +123,19 @@ def test_removing_keeps_detailed_entries(tmp_path):
     assert len(kept) == 1
     assert kept[0].brand == "Solgar"
     assert kept[0].max_price == 6000
+
+
+def test_path_with_raw_utf8_is_decoded():
+    """Строка HTTP-запроса разбирается как latin-1 — кириллицу надо вернуть.
+
+    Браузер экранирует символы сам, но запрос из curl или скрипта приходит
+    сырыми байтами, и без перекодировки поиск шёл бы по «Ð¾Ð¼ÐµÐ³Ð°».
+    """
+    from wishlist_buyer.server import _decoded_path
+
+    broken = "/api/search?q=омега 3".encode().decode("latin-1")
+    assert _decoded_path(broken) == "/api/search?q=омега 3"
+
+    # Экранированный путь от браузера трогать не нужно.
+    escaped = "/api/search?q=%D0%BE%D0%BC%D0%B5%D0%B3%D0%B0"
+    assert _decoded_path(escaped) == escaped
