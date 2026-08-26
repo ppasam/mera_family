@@ -1,0 +1,630 @@
+<title>Подбор покупок mera_family</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;800&family=JetBrains+Mono:wght@400;600&display=swap">
+
+<style>
+:root {
+	--ground: #F6F8FA;
+	--surface: #FFFFFF;
+	--sunken: #EDF1F5;
+	--ink: #131820;
+	--muted: #5F6A79;
+	--accent: #0E6E62;
+	--accent-ink: #FFFFFF;
+	--accent-soft: #E2F0ED;
+	--sale: #B93A2B;
+	--warn: #8A5B0A;
+	--warn-soft: #FBF2E0;
+	--rule: #E1E7ED;
+	--shadow: 0 1px 2px rgba(19, 24, 32, .05), 0 8px 24px rgba(19, 24, 32, .06);
+
+	--ui: "Onest", -apple-system, "Segoe UI", sans-serif;
+	--mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--ground: #0F131A;
+		--surface: #171D26;
+		--sunken: #1F2732;
+		--ink: #E8EDF4;
+		--muted: #93A0B1;
+		--accent: #3FBFA9;
+		--accent-ink: #06231E;
+		--accent-soft: #14302C;
+		--sale: #F0796A;
+		--warn: #E0A44E;
+		--warn-soft: #2A2214;
+		--rule: #26303C;
+		--shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .28);
+	}
+}
+
+:root[data-theme="dark"] {
+	--ground: #0F131A;
+	--surface: #171D26;
+	--sunken: #1F2732;
+	--ink: #E8EDF4;
+	--muted: #93A0B1;
+	--accent: #3FBFA9;
+	--accent-ink: #06231E;
+	--accent-soft: #14302C;
+	--sale: #F0796A;
+	--warn: #E0A44E;
+	--warn-soft: #2A2214;
+	--rule: #26303C;
+	--shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .28);
+}
+
+* { box-sizing: border-box; }
+
+body {
+	margin: 0;
+	background: var(--ground);
+	color: var(--ink);
+	font-family: var(--ui);
+	font-size: 16px;
+	line-height: 1.5;
+	-webkit-font-smoothing: antialiased;
+}
+
+.shell {
+	max-width: 60rem;
+	margin: 0 auto;
+	padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 4vw, 2rem) 9rem;
+	display: flex;
+	flex-direction: column;
+	gap: 2rem;
+}
+
+/* ── шапка ─────────────────────────────────────────────── */
+.head { display: flex; flex-direction: column; gap: .4rem; }
+
+.head h1 {
+	margin: 0;
+	font-size: clamp(1.6rem, 4vw, 2.1rem);
+	font-weight: 800;
+	letter-spacing: -.025em;
+}
+
+.head p { margin: 0; color: var(--muted); font-size: .98rem; }
+
+.demo-flag {
+	align-self: flex-start;
+	margin-top: .35rem;
+	font-family: var(--mono);
+	font-size: .68rem;
+	letter-spacing: .1em;
+	text-transform: uppercase;
+	color: var(--accent);
+	background: var(--accent-soft);
+	padding: .25rem .55rem;
+	border-radius: 4px;
+}
+
+/* ── форма поиска ──────────────────────────────────────── */
+.finder {
+	background: var(--surface);
+	border: 1px solid var(--rule);
+	border-radius: 14px;
+	padding: clamp(1.1rem, 3vw, 1.6rem);
+	box-shadow: var(--shadow);
+	display: flex;
+	flex-direction: column;
+	gap: .9rem;
+}
+
+.field { display: flex; flex-direction: column; gap: .4rem; }
+
+label {
+	font-size: .82rem;
+	font-weight: 600;
+	color: var(--muted);
+}
+
+input[type="text"], select {
+	font-family: var(--ui);
+	font-size: 1rem;
+	color: var(--ink);
+	background: var(--surface);
+	border: 1.5px solid var(--rule);
+	border-radius: 9px;
+	padding: .7rem .85rem;
+	width: 100%;
+	transition: border-color .15s;
+}
+
+input[type="text"]:focus, select:focus {
+	outline: none;
+	border-color: var(--accent);
+}
+
+input[type="text"]::placeholder { color: var(--muted); opacity: .7; }
+
+select {
+	appearance: none;
+	background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+	background-position: calc(100% - 18px) 52%, calc(100% - 13px) 52%;
+	background-size: 5px 5px, 5px 5px;
+	background-repeat: no-repeat;
+	padding-right: 2.2rem;
+}
+
+.row { display: flex; gap: .75rem; align-items: flex-end; flex-wrap: wrap; }
+.row .field { flex: 1 1 14rem; }
+
+button {
+	font-family: var(--ui);
+	font-size: .95rem;
+	font-weight: 600;
+	border-radius: 9px;
+	border: 1.5px solid transparent;
+	padding: .7rem 1.3rem;
+	cursor: pointer;
+	transition: filter .15s, background .15s, border-color .15s;
+}
+
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.primary { background: var(--accent); color: var(--accent-ink); }
+.primary:hover { filter: brightness(1.08); }
+.primary:disabled { opacity: .55; cursor: default; filter: none; }
+
+.ghost { background: transparent; color: var(--ink); border-color: var(--rule); }
+.ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+.hint { font-size: .85rem; color: var(--muted); margin: 0; }
+
+/* ── ход поиска ────────────────────────────────────────── */
+.progress {
+	display: none;
+	flex-direction: column;
+	gap: .5rem;
+	font-family: var(--mono);
+	font-size: .82rem;
+	color: var(--muted);
+}
+.progress.on { display: flex; }
+
+.tick { display: flex; align-items: center; gap: .55rem; opacity: .35; transition: opacity .25s; }
+.tick.done { opacity: 1; }
+.tick.done .dot { background: var(--accent); border-color: var(--accent); }
+
+.dot {
+	width: .62rem;
+	height: .62rem;
+	border-radius: 50%;
+	border: 1.5px solid var(--muted);
+	flex: none;
+}
+
+/* ── сводка ────────────────────────────────────────────── */
+.summary {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: .5rem 1.4rem;
+	padding-bottom: .9rem;
+	border-bottom: 1px solid var(--rule);
+}
+
+.summary h2 { margin: 0; font-size: 1.15rem; font-weight: 700; letter-spacing: -.01em; }
+.summary .meta { font-family: var(--mono); font-size: .78rem; color: var(--muted); }
+
+/* ── карточки ──────────────────────────────────────────── */
+.cards { display: flex; flex-direction: column; gap: 1rem; }
+
+.card {
+	background: var(--surface);
+	border: 1px solid var(--rule);
+	border-radius: 14px;
+	padding: 1rem;
+	display: grid;
+	grid-template-columns: 7.5rem 1fr;
+	gap: 1rem;
+	box-shadow: var(--shadow);
+	transition: border-color .15s;
+}
+
+.card.picked { border-color: var(--accent); }
+
+.card.secondary {
+	box-shadow: none;
+	background: transparent;
+	grid-template-columns: 4.5rem 1fr;
+	padding: .8rem;
+}
+
+.thumb {
+	width: 100%;
+	aspect-ratio: 3 / 4;
+	object-fit: contain;
+	background: var(--sunken);
+	border-radius: 9px;
+}
+
+.body { display: flex; flex-direction: column; gap: .6rem; min-width: 0; }
+
+.rank {
+	font-family: var(--mono);
+	font-size: .68rem;
+	font-weight: 600;
+	letter-spacing: .08em;
+	text-transform: uppercase;
+	color: var(--accent);
+}
+
+.title {
+	margin: 0;
+	font-size: 1.02rem;
+	font-weight: 600;
+	line-height: 1.35;
+	text-wrap: balance;
+}
+.card.secondary .title { font-size: .94rem; font-weight: 500; }
+
+.price-line { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; }
+
+.price {
+	font-size: 1.5rem;
+	font-weight: 800;
+	letter-spacing: -.02em;
+	font-variant-numeric: tabular-nums;
+}
+.card.secondary .price { font-size: 1.15rem; font-weight: 700; }
+
+.was {
+	font-size: .92rem;
+	color: var(--muted);
+	text-decoration: line-through;
+	font-variant-numeric: tabular-nums;
+}
+
+.off {
+	font-family: var(--mono);
+	font-size: .76rem;
+	font-weight: 600;
+	color: var(--sale);
+}
+
+.specs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .35rem .9rem;
+	font-size: .87rem;
+	color: var(--muted);
+	font-variant-numeric: tabular-nums;
+}
+.specs b { color: var(--ink); font-weight: 600; }
+
+.tags { display: flex; flex-wrap: wrap; gap: .35rem; }
+
+.tag {
+	font-size: .78rem;
+	padding: .2rem .55rem;
+	border-radius: 999px;
+	background: var(--accent-soft);
+	color: var(--accent);
+	font-weight: 500;
+}
+
+.tag.caution { background: var(--warn-soft); color: var(--warn); }
+
+.actions { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; margin-top: .15rem; }
+
+.link {
+	font-size: .86rem;
+	color: var(--muted);
+	text-decoration: none;
+	border-bottom: 1px solid var(--rule);
+}
+.link:hover { color: var(--accent); border-color: var(--accent); }
+
+.more { display: flex; justify-content: center; }
+
+/* ── панель выбора ─────────────────────────────────────── */
+.tray {
+	position: fixed;
+	left: 0; right: 0; bottom: 0;
+	background: var(--surface);
+	border-top: 1px solid var(--rule);
+	box-shadow: 0 -6px 24px rgba(19, 24, 32, .09);
+	transform: translateY(105%);
+	transition: transform .28s cubic-bezier(.22, 1, .36, 1);
+	z-index: 10;
+}
+.tray.up { transform: translateY(0); }
+
+.tray-inner {
+	max-width: 60rem;
+	margin: 0 auto;
+	padding: .95rem clamp(1rem, 4vw, 2rem);
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	flex-wrap: wrap;
+}
+
+.tray-text { flex: 1 1 16rem; min-width: 0; display: flex; flex-direction: column; gap: .1rem; }
+.tray-label { font-size: .78rem; color: var(--muted); }
+.tray-title { font-weight: 600; font-size: .96rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tray-price { font-weight: 800; font-size: 1.25rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ── итог покупки ──────────────────────────────────────── */
+.receipt {
+	display: none;
+	background: var(--surface);
+	border: 1px solid var(--accent);
+	border-radius: 14px;
+	padding: 1.25rem;
+	flex-direction: column;
+	gap: .8rem;
+	box-shadow: var(--shadow);
+}
+.receipt.on { display: flex; }
+
+.receipt h3 { margin: 0; font-size: 1.05rem; font-weight: 700; }
+
+.steps-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: .5rem;
+	font-size: .93rem;
+}
+
+.steps-list li { display: flex; gap: .6rem; align-items: flex-start; }
+
+.mark {
+	font-family: var(--mono);
+	font-size: .72rem;
+	font-weight: 600;
+	padding: .1rem .4rem;
+	border-radius: 4px;
+	flex: none;
+	margin-top: .12rem;
+}
+.mark.ok { background: var(--accent-soft); color: var(--accent); }
+.mark.stop { background: var(--warn-soft); color: var(--warn); }
+
+.receipt p { margin: 0; font-size: .9rem; color: var(--muted); }
+
+.hidden { display: none !important; }
+
+@media (max-width: 40rem) {
+	.card { grid-template-columns: 5.5rem 1fr; }
+	.card.secondary { grid-template-columns: 3.5rem 1fr; }
+	.tray-price { font-size: 1.1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	* { transition: none !important; }
+}
+</style>
+
+<div class="shell">
+
+	<header class="head">
+		<h1>Подбор покупок</h1>
+		<p>Введите товар из списка желаний — модуль найдёт его на маркетплейсе и предложит выгодные варианты.</p>
+		<span class="demo-flag">демонстрация на сохранённых данных</span>
+	</header>
+
+	<form class="finder" id="finder">
+		<div class="field">
+			<label for="query">Что ищем</label>
+			<input type="text" id="query" value="омега 3 solgar" placeholder="например, магний глицинат" autocomplete="off">
+		</div>
+		<div class="row">
+			<div class="field">
+				<label for="market">Где искать</label>
+				<select id="market">
+					<option value="ozon">Ozon</option>
+				</select>
+			</div>
+			<button type="submit" class="primary" id="go">Найти</button>
+		</div>
+		<p class="hint" id="hint">Другие площадки появятся, когда к ним напишут адаптер. Данные в демо — реальный ответ витрины Ozon по запросу «омега 3 solgar».</p>
+		<div class="progress" id="progress">
+			<div class="tick" data-tick="0"><span class="dot"></span> открываю витрину в браузере клиента</div>
+			<div class="tick" data-tick="1"><span class="dot"></span> читаю ответ composer-api</div>
+			<div class="tick" data-tick="2"><span class="dot"></span> отбираю выгодные варианты</div>
+		</div>
+	</form>
+
+	<section id="results" class="hidden" style="display:flex; flex-direction:column; gap:1.1rem;">
+		<div class="summary">
+			<h2 id="summary-title">Лучшие варианты</h2>
+			<span class="meta" id="summary-meta"></span>
+		</div>
+		<div class="cards" id="top"></div>
+		<div class="more">
+			<button type="button" class="ghost" id="toggle-rest"></button>
+		</div>
+		<div class="cards hidden" id="rest"></div>
+		<div class="receipt" id="receipt"></div>
+	</section>
+
+</div>
+
+<div class="tray" id="tray">
+	<div class="tray-inner">
+		<div class="tray-text">
+			<span class="tray-label">Выбрано</span>
+			<span class="tray-title" id="tray-title"></span>
+		</div>
+		<span class="tray-price" id="tray-price"></span>
+		<button type="button" class="ghost" id="cancel">Отменить</button>
+		<button type="button" class="primary" id="buy">Купить</button>
+	</div>
+</div>
+
+<script id="offers-data" type="application/json">/*OFFERS*/</script>
+
+<script>
+(() => {
+	"use strict";
+
+	const DATA = JSON.parse(document.getElementById("offers-data").textContent);
+	const money = (value) => value.toLocaleString("ru-RU") + " ₽";
+
+	const el = (id) => document.getElementById(id);
+	const results = el("results"), top = el("top"), rest = el("rest");
+	const tray = el("tray"), receipt = el("receipt"), progress = el("progress");
+	const toggleRest = el("toggle-rest");
+
+	let picked = null;
+
+	function card(item, secondary) {
+		const node = document.createElement("article");
+		node.className = "card" + (secondary ? " secondary" : "");
+		node.dataset.sku = item.sku;
+
+		const image = item.image
+			? `<img class="thumb" src="${item.image}" alt="">`
+			: `<div class="thumb"></div>`;
+
+		const specs = [];
+		if (item.delivery) specs.push(`Доставка <b>${item.delivery.toLowerCase()}</b>`);
+		if (item.rating) {
+			const reviews = item.reviews ? ` (${item.reviews.toLocaleString("ru-RU")})` : "";
+			specs.push(`★ <b>${item.rating}</b>${reviews}`);
+		}
+		if (item.seller) {
+			const mark = item.seller.official ? " ✓" : "";
+			specs.push(`Продавец <b>${item.seller.name}${mark}</b>`);
+		}
+
+		const tags = [
+			...item.reasons.map((text) => `<span class="tag">${text}</span>`),
+			...item.warnings.map((text) => `<span class="tag caution">${text}</span>`),
+		].join("");
+
+		node.innerHTML = `
+			${image}
+			<div class="body">
+				${item.rank ? `<div class="rank">вариант ${item.rank}</div>` : ""}
+				<h3 class="title">${item.title}</h3>
+				<div class="price-line">
+					<span class="price">${money(item.price)}</span>
+					${item.priceOriginal ? `<span class="was">${money(item.priceOriginal)}</span>` : ""}
+					${item.discount ? `<span class="off">−${item.discount}%</span>` : ""}
+				</div>
+				<div class="specs">${specs.join("")}</div>
+				${tags ? `<div class="tags">${tags}</div>` : ""}
+				<div class="actions">
+					<button type="button" class="primary pick">Выбрать</button>
+					<a class="link" href="${item.url}" target="_blank" rel="noopener">Открыть на Ozon</a>
+				</div>
+			</div>`;
+
+		node.querySelector(".pick").addEventListener("click", () => pick(item, node));
+		return node;
+	}
+
+	function pick(item, node) {
+		document.querySelectorAll(".card.picked").forEach((other) => {
+			other.classList.remove("picked");
+			const button = other.querySelector(".pick");
+			button.textContent = "Выбрать";
+			button.className = "primary pick";
+		});
+
+		picked = item;
+		node.classList.add("picked");
+		const button = node.querySelector(".pick");
+		button.textContent = "Выбрано";
+		button.className = "ghost pick";
+
+		el("tray-title").textContent = item.title;
+		el("tray-price").textContent = money(item.price);
+		tray.classList.add("up");
+		receipt.classList.remove("on");
+	}
+
+	function clearPick() {
+		picked = null;
+		tray.classList.remove("up");
+		document.querySelectorAll(".card.picked").forEach((node) => {
+			node.classList.remove("picked");
+			const button = node.querySelector(".pick");
+			button.textContent = "Выбрать";
+			button.className = "primary pick";
+		});
+	}
+
+	function render() {
+		const recommended = DATA.items.filter((item) => item.recommended);
+		const others = DATA.items.filter((item) => !item.recommended);
+
+		top.replaceChildren(...recommended.map((item) => card(item, false)));
+		rest.replaceChildren(...others.map((item) => card(item, true)));
+
+		el("summary-title").textContent = `Лучшие варианты: «${DATA.query}»`;
+		el("summary-meta").textContent =
+			`просмотрено ${DATA.items.length} предложений · отобрано ${recommended.length}`;
+
+		toggleRest.textContent = `Показать остальные ${others.length}`;
+		toggleRest.onclick = () => {
+			const hidden = rest.classList.toggle("hidden");
+			toggleRest.textContent = hidden
+				? `Показать остальные ${others.length}`
+				: "Свернуть остальные";
+		};
+
+		results.classList.remove("hidden");
+	}
+
+	el("finder").addEventListener("submit", (event) => {
+		event.preventDefault();
+		const query = el("query").value.trim();
+		if (!query) return;
+
+		clearPick();
+		receipt.classList.remove("on");
+		results.classList.add("hidden");
+		el("go").disabled = true;
+
+		// Этапы поиска показываются по очереди: так видно, что модуль делает
+		// с витриной, а не просто «крутится спиннер».
+		progress.classList.add("on");
+		const ticks = progress.querySelectorAll(".tick");
+		ticks.forEach((tick) => tick.classList.remove("done"));
+
+		ticks.forEach((tick, index) => {
+			setTimeout(() => tick.classList.add("done"), 420 * (index + 1));
+		});
+
+		setTimeout(() => {
+			progress.classList.remove("on");
+			el("go").disabled = false;
+			if (query.toLowerCase() !== DATA.query) {
+				el("hint").textContent =
+					`В демо сохранён ответ витрины только по запросу «${DATA.query}» — показываю его.`;
+			}
+			render();
+			results.scrollIntoView({ behavior: "smooth", block: "start" });
+		}, 420 * ticks.length + 300);
+	});
+
+	el("cancel").addEventListener("click", clearPick);
+
+	el("buy").addEventListener("click", () => {
+		if (!picked) return;
+		receipt.innerHTML = `
+			<h3>Что произойдёт при покупке</h3>
+			<ul class="steps-list">
+				<li><span class="mark ok">1</span><span>Товар «${picked.title}» за ${money(picked.price)} добавляется в корзину — в вашей же сессии Ozon.</span></li>
+				<li><span class="mark ok">2</span><span>Открывается корзина, состав заказа можно проверить.</span></li>
+				<li><span class="mark stop">3</span><span>Модуль останавливается. Оформление и оплату вы делаете сами — деньги он не списывает никогда.</span></li>
+			</ul>
+			<p>В демонстрации покупка не выполняется: страница работает на сохранённых данных и с маркетплейсом не связывается.</p>`;
+		receipt.classList.add("on");
+		receipt.scrollIntoView({ behavior: "smooth", block: "center" });
+		tray.classList.remove("up");
+	});
+})();
+</script>
