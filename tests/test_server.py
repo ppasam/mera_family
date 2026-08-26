@@ -139,3 +139,12 @@ def test_path_with_raw_utf8_is_decoded():
     # Экранированный путь от браузера трогать не нужно.
     escaped = "/api/search?q=%D0%BE%D0%BC%D0%B5%D0%B3%D0%B0"
     assert _decoded_path(escaped) == escaped
+
+
+def test_page_is_not_cached():
+    """Страница правится вместе с модулем — закешированная выглядит как «не приехало»."""
+    import inspect
+
+    from wishlist_buyer.server import Handler
+
+    assert "no-store" in inspect.getsource(Handler._send_page)
