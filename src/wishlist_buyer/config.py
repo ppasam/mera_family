@@ -112,6 +112,37 @@ def append_wish(path: Path, query: str) -> bool:
     return True
 
 
+def remove_wish(path: Path, query: str) -> bool:
+    """Убирает желание из списка. Возвращает False, если его там не было.
+
+    Нужно потому, что список пополняется каждым поиском: опечатка или случайный
+    запрос иначе остались бы в нём навсегда и попадали бы в каждый обход.
+    """
+    if not path.exists():
+        return False
+
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if isinstance(data, list):
+        data = {"items": data}
+
+    items = data.get("items", [])
+    kept = [
+        entry
+        for entry in items
+        if (entry if isinstance(entry, str) else entry.get("query", "")).strip().lower()
+        != query.strip().lower()
+    ]
+    if len(kept) == len(items):
+        return False
+
+    data["items"] = kept
+    path.write_text(
+        yaml.safe_dump(data, allow_unicode=True, sort_keys=False, width=100),
+        encoding="utf-8",
+    )
+    return True
+
+
 def load_wishlist(path: Path) -> list[WishItem]:
     """Читает список желаний из YAML.
 

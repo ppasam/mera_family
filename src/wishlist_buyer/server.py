@@ -27,7 +27,7 @@ from urllib.parse import parse_qs, urlparse
 from .adapters.ozon import OzonAdapter
 from .audit import Audit
 from .browser import ChallengeDetected, NotAuthenticated, Session, open_session
-from .config import Settings, append_wish, load_wishlist
+from .config import Settings, append_wish, load_wishlist, remove_wish
 from .models import Offer, WishItem
 from .rank import rank
 
@@ -129,6 +129,12 @@ class BrowserWorker:
             for item in load_wishlist(self.settings.wishlist_file)
         ]
 
+    def forget(self, query: str) -> dict[str, Any]:
+        """Убирает желание из списка вместе с состоянием подбора по нему."""
+        removed = remove_wish(self.settings.wishlist_file, query)
+        self.progress.pop(query, None)
+        return {"removed": removed, "wishlist": self.wishlist()}
+
     def choose(self, query: str, sku: str, title: str, price: int) -> dict[str, Any]:
         """Отмечает выбор клиента: в журнале действий и в состоянии подбора."""
         self.progress.setdefault(query, {"found": None})["picked"] = {
@@ -192,6 +198,9 @@ class Handler(BaseHTTPRequestHandler):
             self._send_search(query)
         elif route.path == "/api/wishlist":
             self._send_json({"wishlist": self.worker.wishlist()})
+        elif route.path == "/api/forget":
+            query = (parse_qs(route.query).get("q") or [""])[0]
+            self._send_json(self.worker.forget(query))
         elif route.path == "/api/choose":
             params = parse_qs(route.query)
             self._send_json(

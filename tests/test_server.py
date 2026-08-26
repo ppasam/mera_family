@@ -77,3 +77,34 @@ def test_price_is_whole_rubles(offers):
     item = _as_json(offers[0], None)
     assert isinstance(item["price"], int)
     assert Decimal(item["price"]) == offers[0].price
+
+
+def test_wish_can_be_added_and_removed(tmp_path):
+    """Список пополняется каждым поиском, поэтому убрать лишнее должно быть можно."""
+    from wishlist_buyer.config import append_wish, load_wishlist, remove_wish
+
+    path = tmp_path / "wishlist.yaml"
+    assert append_wish(path, "шахматы кинешма") is True
+    assert append_wish(path, "магний глицинат") is True
+    assert append_wish(path, "Шахматы Кинешма ") is False, "дубль не должен добавляться"
+
+    assert remove_wish(path, "шахматы кинешма") is True
+    assert remove_wish(path, "шахматы кинешма") is False, "повторное удаление ничего не меняет"
+    assert [item.query for item in load_wishlist(path)] == ["магний глицинат"]
+
+
+def test_removing_keeps_detailed_entries(tmp_path):
+    """Развёрнутые записи соседей не должны схлопываться при удалении."""
+    from wishlist_buyer.config import load_wishlist, remove_wish
+
+    path = tmp_path / "wishlist.yaml"
+    path.write_text(
+        "items:\n  - query: омега 3 solgar\n    brand: Solgar\n    max_price: 6000\n  - лишнее\n",
+        encoding="utf-8",
+    )
+    assert remove_wish(path, "лишнее") is True
+
+    kept = load_wishlist(path)
+    assert len(kept) == 1
+    assert kept[0].brand == "Solgar"
+    assert kept[0].max_price == 6000

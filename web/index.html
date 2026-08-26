@@ -248,8 +248,26 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 }
 .wish-name:hover { color: var(--accent); border-bottom-color: var(--accent); }
 
+.wish-drop {
+	order: 3;
+	background: none;
+	border: none;
+	color: var(--muted);
+	font-size: 1.1rem;
+	line-height: 1;
+	padding: .1rem .35rem;
+	border-radius: 4px;
+	cursor: pointer;
+	opacity: .5;
+	transition: opacity .15s, color .15s;
+}
+.wish:hover .wish-drop { opacity: 1; }
+.wish-drop:hover { color: var(--sale); }
+.wish-drop:focus-visible { opacity: 1; outline: 2px solid var(--accent); outline-offset: 1px; }
+
 .wish-state {
 	margin-left: auto;
+	order: 2;
 	font-family: var(--mono);
 	font-size: .74rem;
 	color: var(--muted);
@@ -581,7 +599,20 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 				state.textContent = "ещё не искали";
 			}
 
-			row.append(name, state);
+			const drop = document.createElement("button");
+			drop.type = "button";
+			drop.className = "wish-drop";
+			drop.textContent = "×";
+			drop.title = "Убрать из списка";
+			drop.setAttribute("aria-label", `Убрать «${item.query}» из списка`);
+			drop.addEventListener("click", () => {
+				fetch("/api/forget?q=" + encodeURIComponent(item.query))
+					.then((answer) => answer.json())
+					.then((payload) => renderWishlist(payload.wishlist))
+					.catch(() => { /* список обновится при следующем поиске */ });
+			});
+
+			row.append(name, state, drop);
 			return row;
 		}));
 
