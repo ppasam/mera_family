@@ -140,8 +140,8 @@ async def _search_and_offer(wish: WishItem, *, top: int, limit: int, buy: bool) 
                 console.print(f"[red]Не удалось оформить: {attempt.error}[/red]")
             else:
                 console.print(
-                    "\n[green]Товар в корзине, заказ доведён до оформления.[/green]\n"
-                    "[bold]Проверьте состав заказа и нажмите «Оплатить» сами — "
+                    "\n[green]Товар в корзине.[/green]\n"
+                    "[bold]Оформите заказ и оплатите сами — "
                     "модуль деньги не списывает.[/bold]"
                 )
 

@@ -94,8 +94,9 @@ class OzonAdapter:
     async def add_to_cart(self, session: Session, offer: Offer) -> PurchaseAttempt:
         """Кладёт товар в корзину действиями на странице — как это делает человек.
 
-        Оплата не подтверждается: модуль доводит заказ до экрана оплаты и
-        останавливается. Кнопку «Оплатить» нажимает клиент.
+        Оплата не подтверждается никогда. Сейчас метод останавливается на
+        корзине: шаг «оформить заказ» не реализован, стадия AWAITING_PAYMENT
+        зарезервирована под него.
         """
         attempt = PurchaseAttempt(wish_query=offer.title, offer=offer, stage=PurchaseStage.SELECTED)
         try:
