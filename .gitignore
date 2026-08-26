@@ -1,0 +1,24 @@
+# окружения и зависимости
+venv/
+.venv/
+node_modules/
+__pycache__/
+*.py[cod]
+
+# сборки
+dist/
+build/
+*.egg-info/
+
+# секреты — никогда не коммитить
+.env
+*.key
+*.pem
+credentials.json
+token.json
+
+# служебное ОС и редакторов
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
