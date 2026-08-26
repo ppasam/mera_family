@@ -33,8 +33,20 @@ class Pace:
     min_action_delay: float = 0.8
     max_action_delay: float = 2.6
     page_settle: float = 3.0
-    between_queries: float = 12.0
-    max_queries_per_session: int = 25
+
+    # Пауза между страницами одной выдачи.
+    between_queries: float = 20.0
+
+    # Пауза перед переходом к следующему товару списка желаний. Практики парсинга
+    # сходятся на «около минуты между товарами» для Ozon; берём с запасом вниз,
+    # потому что запросы идут из настоящей сессии клиента, а не с прокси.
+    # Обоснование и числа — wiki/sources/wildberries-i-limity-parsinga.md
+    between_items: float = 45.0
+
+    # Лимит навигаций на весь прогон, а не на один товар. Ниже порога, после
+    # которого витрина начинает показывать проверку (20–30 запросов).
+    max_queries_per_session: int = 18
+
     scroll_steps: tuple[int, int] = (2, 5)
 
 

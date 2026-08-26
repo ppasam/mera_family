@@ -17,7 +17,7 @@ import typer
 
 from .adapters.ozon import OzonAdapter
 from .audit import Audit
-from .browser import ChallengeDetected, NotAuthenticated, open_session
+from .browser import ChallengeDetected, NotAuthenticated, Session, open_session
 from .config import Settings, load_wishlist
 from .models import PurchaseStage, WishItem
 from .present import ask_choice, console, show_offers
@@ -68,7 +68,7 @@ def search(
     limit: Annotated[int, typer.Option(help="Сколько предложений просмотреть")] = 24,
 ) -> None:
     """Ищет товар и показывает лучшие варианты. Ничего не покупает."""
-    asyncio.run(_search_and_offer(WishItem(query=query), top=top, limit=limit, buy=False))
+    asyncio.run(_walk([WishItem(query=query)], top=top, limit=limit, buy=False))
 
 
 @app.command()
@@ -80,7 +80,7 @@ def buy(
 
     Оплату модуль не подтверждает — последний шаг всегда за клиентом.
     """
-    asyncio.run(_search_and_offer(WishItem(query=query), top=top, limit=24, buy=True))
+    asyncio.run(_walk([WishItem(query=query)], top=top, limit=24, buy=True))
 
 
 @app.command()
@@ -99,11 +99,18 @@ def run(
 
     wishes = load_wishlist(path)
     console.print(f"Желаний в списке: [bold]{len(wishes)}[/bold]")
-    for wish in wishes:
-        asyncio.run(_search_and_offer(wish, top=3, limit=24, buy=buy_mode))
+    asyncio.run(_walk(wishes, top=3, limit=24, buy=buy_mode))
 
 
-async def _search_and_offer(wish: WishItem, *, top: int, limit: int, buy: bool) -> None:
+async def _walk(wishes: list[WishItem], *, top: int, limit: int, buy: bool) -> None:
+    """Проходит список желаний в одной сессии браузера.
+
+    Сессия одна на весь прогон по двум причинам. Первая: перезапуск браузера на
+    каждый товар выглядит для витрины страннее, чем непрерывная работа. Вторая
+    важнее — счётчик запросов живёт в сессии, и при перезапуске он обнулялся бы,
+    превращая `max_queries_per_session` в лимит «на один товар» вместо лимита на
+    весь прогон. Обоснование темпа — wiki/sources/wildberries-i-limity-parsinga.md
+    """
     settings = _settings()
     audit = Audit(settings.audit_dir)
     adapter = OzonAdapter()
@@ -111,44 +118,65 @@ async def _search_and_offer(wish: WishItem, *, top: int, limit: int, buy: bool) 
     try:
         # Для поиска вход не нужен — он нужен для цены по карте и для корзины.
         async with open_session(settings, require_auth=buy) as session:
-            console.print(f"\n[dim]Ищу «{wish.query}» на ozon.ru…[/dim]")
-            offers = await adapter.search(session, wish, limit=limit)
-            audit.searched(wish, len(offers))
-
-            if not offers:
-                console.print("[yellow]Ничего подходящего не нашлось.[/yellow]")
-                return
-
-            scored = rank(offers, top=top)
-            audit.offered(wish, scored)
-            show_offers(wish, scored)
-
-            if not buy:
-                return
-
-            choice = ask_choice(scored)
-            audit.chosen(wish, choice)
-            if choice is None:
-                console.print("[dim]Покупка отменена клиентом.[/dim]")
-                return
-
-            console.print(f"\n[dim]Кладу в корзину: {choice.offer.title}[/dim]")
-            attempt = await adapter.add_to_cart(session, choice.offer)
-            audit.purchase(attempt)
-
-            if attempt.stage == PurchaseStage.FAILED:
-                console.print(f"[red]Не удалось оформить: {attempt.error}[/red]")
-            else:
-                console.print(
-                    "\n[green]Товар в корзине.[/green]\n"
-                    "[bold]Оформите заказ и оплатите сами — "
-                    "модуль деньги не списывает.[/bold]"
-                )
+            for index, wish in enumerate(wishes):
+                if index:
+                    # Переход к следующему товару — самое заметное для витрины
+                    # место, здесь пауза длиннее всех остальных.
+                    pause = settings.pace.between_items
+                    console.print(f"[dim]Пауза {pause:.0f} с перед следующим товаром…[/dim]")
+                    await asyncio.sleep(pause)
+                await _offer_one(session, wish, adapter, audit, top=top, limit=limit, buy=buy)
 
     except NotAuthenticated as exc:
         console.print(f"[yellow]{exc}[/yellow]")
     except ChallengeDetected as exc:
         console.print(f"[yellow]{exc}[/yellow]")
+
+
+async def _offer_one(
+    session: Session,
+    wish: WishItem,
+    adapter: OzonAdapter,
+    audit: Audit,
+    *,
+    top: int,
+    limit: int,
+    buy: bool,
+) -> None:
+    """Один товар: поиск, подборка, подтверждение клиента, корзина."""
+    console.print(f"\n[dim]Ищу «{wish.query}» на ozon.ru…[/dim]")
+
+    offers = await adapter.search(session, wish, limit=limit)
+    audit.searched(wish, len(offers))
+
+    if not offers:
+        console.print("[yellow]Ничего подходящего не нашлось.[/yellow]")
+        return
+
+    scored = rank(offers, top=top)
+    audit.offered(wish, scored)
+    show_offers(wish, scored)
+
+    if not buy:
+        return
+
+    choice = ask_choice(scored)
+    audit.chosen(wish, choice)
+    if choice is None:
+        console.print("[dim]Покупка отменена клиентом.[/dim]")
+        return
+
+    console.print(f"\n[dim]Кладу в корзину: {choice.offer.title}[/dim]")
+    attempt = await adapter.add_to_cart(session, choice.offer)
+    audit.purchase(attempt)
+
+    if attempt.stage == PurchaseStage.FAILED:
+        console.print(f"[red]Не удалось оформить: {attempt.error}[/red]")
+    else:
+        console.print(
+            "\n[green]Товар в корзине.[/green]\n"
+            "[bold]Оформите заказ и оплатите сами — модуль деньги не списывает.[/bold]"
+        )
 
 
 if __name__ == "__main__":
