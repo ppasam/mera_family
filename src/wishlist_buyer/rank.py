@@ -112,6 +112,19 @@ def rank(
             diff = offer.price_without_card - offer.price
             warnings.append(f"цена указана с картой Ozon; без неё дороже на {diff:.0f} ₽")
 
+        # Вариант попал в подборку, но ничем не выделился на фоне соседей —
+        # объясняем, за что его выбрал ранжировщик. Карточка без единого «почему»
+        # выглядит так, будто он там случайно.
+        if not reasons:
+            contributions = {
+                "цена ниже большинства найденных": weights.price * price_score,
+                "привезут быстрее большинства": weights.delivery * delivery_score,
+                "высокая оценка покупателей": weights.rating * rating_score,
+                "берут чаще остальных": weights.popularity * popularity_score,
+                "продавец надёжнее прочих": weights.trust * trust_score,
+            }
+            reasons.append(max(contributions, key=contributions.get))
+
         scored.append(
             ScoredOffer(offer=offer, score=round(score, 4), reasons=reasons, warnings=warnings)
         )

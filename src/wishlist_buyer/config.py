@@ -77,6 +77,41 @@ class Settings:
             directory.mkdir(parents=True, exist_ok=True)
 
 
+def append_wish(path: Path, query: str) -> bool:
+    """Дописывает желание в список. Возвращает False, если оно там уже было.
+
+    Список желаний — источник истины о том, что клиент хочет купить, поэтому
+    поиск через интерфейс не «просто ищет», а пополняет его: введённый товар
+    остаётся в списке и после закрытия страницы.
+
+    Файл переписывается целиком, но существующие пункты сохраняются как есть —
+    развёрнутые записи с брендом и стоп-словами не схлопываются в строки.
+    """
+    query = query.strip()
+    if not query:
+        return False
+
+    data: dict = {}
+    if path.exists():
+        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if isinstance(data, list):  # старый формат: сразу список
+        data = {"items": data}
+
+    items = data.setdefault("items", [])
+    for entry in items:
+        existing = entry if isinstance(entry, str) else entry.get("query", "")
+        if existing.strip().lower() == query.lower():
+            return False
+
+    items.append(query)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        yaml.safe_dump(data, allow_unicode=True, sort_keys=False, width=100),
+        encoding="utf-8",
+    )
+    return True
+
+
 def load_wishlist(path: Path) -> list[WishItem]:
     """Читает список желаний из YAML.
 

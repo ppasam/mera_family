@@ -28,7 +28,7 @@ from urllib.parse import parse_qs, urlparse
 from .adapters.ozon import OzonAdapter
 from .audit import Audit
 from .browser import ChallengeDetected, NotAuthenticated, Session, open_session
-from .config import Settings
+from .config import Settings, append_wish, load_wishlist
 from .models import Offer, WishItem
 from .rank import rank
 
@@ -46,6 +46,9 @@ class BrowserWorker:
         self.settings = settings
         self.adapter = OzonAdapter()
         self.audit = Audit(settings.audit_dir)
+        # Что уже подобрано по каждому желанию. Сам список желаний живёт в файле,
+        # а вот «найдено 16, выбран такой-то» — состояние текущего сеанса подбора.
+        self.progress: dict[str, dict[str, Any]] = {}
         self._loop = asyncio.new_event_loop()
         self._thread = threading.Thread(target=self._run_loop, daemon=True)
         self._session: Session | None = None
@@ -74,21 +77,68 @@ class BrowserWorker:
 
     async def _search(self, query: str, *, top: int, limit: int) -> dict[str, Any]:
         session = await self._ensure_session()
-        wish = WishItem(query=query)
+
+        # Введённое клиентом попадает в список желаний: интерфейс не «просто
+        # ищет», а ведёт тот же список, с которым работает команда `run`.
+        added = append_wish(self.settings.wishlist_file, query)
+
+        # Если такое желание уже описано в файле — берём его целиком, вместе с
+        # брендом, стоп-словами и потолком цены, а не голую строку запроса.
+        wish = next(
+            (
+                item
+                for item in load_wishlist(self.settings.wishlist_file)
+                if item.query.strip().lower() == query.strip().lower()
+            ),
+            WishItem(query=query),
+        )
 
         offers = await self.adapter.search(session, wish, limit=limit)
         self.audit.searched(wish, len(offers))
 
-        if not offers:
-            return {"query": query, "marketplace": "ozon", "items": [], "live": True}
-
-        scored = rank(offers, top=top)
-        self.audit.offered(wish, scored)
+        scored = rank(offers, top=top) if offers else []
+        if scored:
+            self.audit.offered(wish, scored)
         ranked = {item.offer.sku: (position, item) for position, item in enumerate(scored, 1)}
 
         items = [_as_json(offer, ranked.get(offer.sku)) for offer in offers]
         items.sort(key=lambda item: (item["rank"] or 99, item["price"]))
-        return {"query": query, "marketplace": "ozon", "items": items, "live": True}
+
+        self.progress[wish.query] = {
+            "found": len(items),
+            "picked": self.progress.get(wish.query, {}).get("picked"),
+        }
+
+        return {
+            "query": wish.query,
+            "marketplace": "ozon",
+            "items": items,
+            "live": True,
+            "addedToWishlist": added,
+            "wishlist": self.wishlist(),
+        }
+
+    def wishlist(self) -> list[dict[str, Any]]:
+        """Список желаний клиента вместе с тем, что по ним уже подобрано."""
+        return [
+            {
+                "query": item.query,
+                "brand": item.brand,
+                "maxPrice": int(item.max_price) if item.max_price else None,
+                **self.progress.get(item.query, {"found": None, "picked": None}),
+            }
+            for item in load_wishlist(self.settings.wishlist_file)
+        ]
+
+    def choose(self, query: str, sku: str, title: str, price: int) -> dict[str, Any]:
+        """Отмечает выбор клиента: в журнале действий и в состоянии подбора."""
+        self.progress.setdefault(query, {"found": None})["picked"] = {
+            "sku": sku,
+            "title": title,
+            "price": price,
+        }
+        self.audit.picked_in_ui(query, sku, title, price)
+        return {"ok": True, "wishlist": self.wishlist()}
 
     def close(self) -> None:
         if self._session is not None:
@@ -141,6 +191,18 @@ class Handler(BaseHTTPRequestHandler):
         elif route.path == "/api/search":
             query = (parse_qs(route.query).get("q") or [""])[0].strip()
             self._send_search(query)
+        elif route.path == "/api/wishlist":
+            self._send_json({"wishlist": self.worker.wishlist()})
+        elif route.path == "/api/choose":
+            params = parse_qs(route.query)
+            self._send_json(
+                self.worker.choose(
+                    (params.get("q") or [""])[0],
+                    (params.get("sku") or [""])[0],
+                    (params.get("title") or [""])[0],
+                    int((params.get("price") or ["0"])[0]),
+                )
+            )
         else:
             self._send_json({"error": "не найдено"}, status=404)
 

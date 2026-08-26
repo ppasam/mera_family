@@ -59,6 +59,10 @@ class Audit:
             },
         )
 
+    def picked_in_ui(self, query: str, sku: str, title: str, price: int) -> None:
+        """Выбор, сделанный на странице подбора, а не в терминале."""
+        self._write("picked", {"query": query, "sku": sku, "title": title, "price": price})
+
     def purchase(self, attempt: PurchaseAttempt) -> None:
         self._write(
             "purchase",

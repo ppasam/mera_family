@@ -126,3 +126,9 @@ def test_rank_warns_about_nameless_seller(offers):
     nameless = [s for s in scored if s.offer.seller and s.offer.seller.name == "не указан"]
     assert nameless
     assert all(any("продавец не указан" in w for w in s.warnings) for s in nameless)
+
+
+def test_every_recommended_offer_explains_itself(offers):
+    """Карточка без единого «почему» выглядит так, будто попала в подборку случайно."""
+    for scored in rank(offers, top=3):
+        assert scored.reasons, f"{scored.offer.title} попал в подборку без обоснования"

@@ -199,6 +199,64 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 	flex: none;
 }
 
+/* ── список желаний ────────────────────────────────────── */
+.wishlist {
+	background: var(--surface);
+	border: 1px solid var(--rule);
+	border-radius: 14px;
+	padding: 1.1rem 1.25rem;
+	display: flex;
+	flex-direction: column;
+	gap: .8rem;
+	box-shadow: var(--shadow);
+}
+
+.wishlist-head { display: flex; align-items: baseline; gap: .75rem; flex-wrap: wrap; }
+.wishlist-head h2 { margin: 0; font-size: 1.05rem; font-weight: 700; }
+.wishlist-head .meta { font-family: var(--mono); font-size: .76rem; color: var(--muted); }
+
+.wishlist-items {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: .1rem;
+}
+
+.wish {
+	display: flex;
+	align-items: center;
+	gap: .75rem;
+	padding: .5rem 0;
+	border-top: 1px solid var(--rule);
+	flex-wrap: wrap;
+}
+.wishlist-items .wish:first-child { border-top: none; }
+
+.wish-name {
+	font-weight: 500;
+	background: none;
+	border: none;
+	padding: 0;
+	font-family: var(--ui);
+	font-size: .96rem;
+	color: var(--ink);
+	cursor: pointer;
+	text-align: left;
+	border-bottom: 1px solid transparent;
+}
+.wish-name:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+.wish-state {
+	margin-left: auto;
+	font-family: var(--mono);
+	font-size: .74rem;
+	color: var(--muted);
+	font-variant-numeric: tabular-nums;
+}
+.wish-state.picked { color: var(--accent); }
+
 /* ── сводка ────────────────────────────────────────────── */
 .summary {
 	display: flex;
@@ -435,6 +493,14 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 		</div>
 	</form>
 
+	<section id="wishlist-box" class="wishlist hidden">
+		<div class="wishlist-head">
+			<h2>Список желаний</h2>
+			<span class="meta" id="wishlist-meta"></span>
+		</div>
+		<ul class="wishlist-items" id="wishlist-items"></ul>
+	</section>
+
 	<section id="results" class="hidden" style="display:flex; flex-direction:column; gap:1.1rem;">
 		<div class="summary">
 			<h2 id="summary-title">Лучшие варианты</h2>
@@ -477,6 +543,63 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 	const toggleRest = el("toggle-rest");
 
 	let picked = null;
+	let currentQuery = DATA.query;
+
+	// ── список желаний ────────────────────────────────────────────────
+	// В живом режиме введённое в строку поиска попадает в тот же файл, с которым
+	// работает команда `run`, — интерфейс ведёт список, а не просто ищет.
+
+	function renderWishlist(items) {
+		const box = el("wishlist-box");
+		if (!items || !items.length) {
+			box.classList.add("hidden");
+			return;
+		}
+
+		const list = el("wishlist-items");
+		list.replaceChildren(...items.map((item) => {
+			const row = document.createElement("li");
+			row.className = "wish";
+
+			const name = document.createElement("button");
+			name.type = "button";
+			name.className = "wish-name";
+			name.textContent = item.query;
+			name.title = "Искать снова";
+			name.addEventListener("click", () => {
+				el("query").value = item.query;
+				el("finder").requestSubmit();
+			});
+
+			const state = document.createElement("span");
+			state.className = "wish-state";
+			if (item.picked) {
+				state.classList.add("picked");
+				state.textContent = `выбрано · ${money(item.picked.price)}`;
+			} else if (item.found === 0) {
+				state.textContent = "ничего не нашлось";
+			} else if (item.found) {
+				state.textContent = `найдено ${item.found}`;
+			} else {
+				state.textContent = "ещё не искали";
+			}
+
+			row.append(name, state);
+			return row;
+		}));
+
+		const done = items.filter((item) => item.picked).length;
+		el("wishlist-meta").textContent =
+			`${items.length} ${plural(items.length, "товар", "товара", "товаров")} · выбрано ${done}`;
+		box.classList.remove("hidden");
+	}
+
+	function plural(count, one, few, many) {
+		const mod10 = count % 10, mod100 = count % 100;
+		if (mod10 === 1 && mod100 !== 11) return one;
+		if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
+		return many;
+	}
 
 	function card(item, secondary) {
 		const node = document.createElement("article");
@@ -503,6 +626,8 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 			...item.warnings.map((text) => `<span class="tag caution">${text}</span>`),
 		].join("");
 
+		const specsHtml = specs.map((text) => `<span>${text}</span>`).join("");
+
 		node.innerHTML = `
 			${image}
 			<div class="body">
@@ -513,7 +638,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 					${item.priceOriginal ? `<span class="was">${money(item.priceOriginal)}</span>` : ""}
 					${item.discount ? `<span class="off">−${item.discount}%</span>` : ""}
 				</div>
-				<div class="specs">${specs.join("")}</div>
+				<div class="specs">${specsHtml}</div>
 				${tags ? `<div class="tags">${tags}</div>` : ""}
 				<div class="actions">
 					<button type="button" class="primary pick">Выбрать</button>
@@ -543,6 +668,16 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 		el("tray-price").textContent = money(item.price);
 		tray.classList.add("up");
 		receipt.classList.remove("on");
+
+		if (LIVE) {
+			const params = new URLSearchParams({
+				q: currentQuery, sku: item.sku, title: item.title, price: item.price,
+			});
+			fetch("/api/choose?" + params)
+				.then((answer) => answer.json())
+				.then((payload) => renderWishlist(payload.wishlist))
+				.catch(() => { /* выбор всё равно виден на странице */ });
+		}
 	}
 
 	function clearPick() {
@@ -649,8 +784,13 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 			}
 
 			ticks.forEach((tick) => tick.classList.add("done"));
+			currentQuery = data.query || query;
+			if (data.wishlist) renderWishlist(data.wishlist);
 			if (!data.items.length) {
-				showError(`По запросу «${query}» витрина ничего не вернула.`);
+				showError(
+					`По запросу «${query}» витрина ничего не вернула. ` +
+					`Товар остался в списке желаний — можно поискать его позже.`
+				);
 				return;
 			}
 			render(data);
@@ -663,6 +803,13 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 			el("go").disabled = false;
 		}
 	});
+
+	if (LIVE) {
+		fetch("/api/wishlist")
+			.then((answer) => answer.json())
+			.then((payload) => renderWishlist(payload.wishlist))
+			.catch(() => { /* список появится после первого поиска */ });
+	}
 
 	el("cancel").addEventListener("click", clearPick);
 
