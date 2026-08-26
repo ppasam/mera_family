@@ -257,8 +257,12 @@ def serve(settings: Settings, *, host: str = "127.0.0.1", port: int = 8765) -> N
     Handler.worker = worker
     httpd = ThreadingHTTPServer((host, port), Handler)
     try:
-        yield_url = f"http://{host}:{port}/"
-        print(f"Интерфейс подбора: {yield_url}\nОстановить — Ctrl+C\n")
+        print(
+            f"Интерфейс подбора: http://{host}:{port}/\n"
+            f"Список желаний:    {settings.wishlist_file.resolve()}\n"
+            f"Профиль браузера:  {settings.browser_profile}\n"
+            "Остановить — Ctrl+C\n"
+        )
         httpd.serve_forever()
     except KeyboardInterrupt:
         print("\nОстанавливаю…")
