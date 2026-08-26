@@ -1,0 +1,17 @@
+# Список желаний клиента.
+# Короткая форма — просто строка запроса. Развёрнутая — со всеми уточнениями.
+
+items:
+  - query: "омега 3 solgar"
+    brand: Solgar
+    synonyms:
+      - "Solgar Omega-3"
+      - "Solgar Triple Strength Omega-3"
+    must_include: [solgar]
+    must_exclude: ["для детей", "жевательн", "kids"]
+    quantity: 1
+    max_price: 6000
+    marketplaces: [ozon]
+    note: "Интересует Triple Strength 950 мг, банка от 100 капсул"
+
+  - "магний глицинат"

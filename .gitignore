@@ -22,3 +22,8 @@ token.json
 Thumbs.db
 .idea/
 .vscode/
+
+# личные данные клиента и артефакты прогонов
+config/wishlist.yaml
+tests/fixtures/*.png
+audit/
