@@ -23,8 +23,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from wishlist_buyer.adapters.ozon.composer import parse_search  # noqa: E402
-from wishlist_buyer.rank import rank  # noqa: E402
+from wishlist_buyer.adapters.ozon.composer import parse_search
+from wishlist_buyer.rank import rank
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "ozon-composer-search.json"
