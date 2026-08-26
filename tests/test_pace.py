@@ -64,3 +64,10 @@ def test_server_reuses_one_browser_session():
     source = inspect.getsource(server.BrowserWorker)
     assert "if self._session is None" in source, "сессия должна создаваться один раз"
     assert "open_session" in source
+
+
+def test_walk_reports_failures_instead_of_traceback():
+    """Клиенту нужна причина, а не трейсбек изнутри драйвера браузера."""
+    source = inspect.getsource(cli._walk)
+    assert "ProfileBusy" in source, "занятый профиль — самая частая причина отказа"
+    assert "except Exception" in source, "неожиданная ошибка тоже должна объясняться"

@@ -27,7 +27,7 @@ from urllib.parse import parse_qs, urlparse
 from .adapters.ozon import OzonAdapter
 from .audit import Audit
 from .browser import ChallengeDetected, NotAuthenticated, Session, open_session
-from .config import Settings, append_wish, load_wishlist, remove_wish
+from .config import Settings, load_wishlist, remove_wish
 from .models import Offer, WishItem
 from .rank import rank
 
@@ -77,12 +77,12 @@ class BrowserWorker:
     async def _search(self, query: str, *, top: int, limit: int) -> dict[str, Any]:
         session = await self._ensure_session()
 
-        # Введённое клиентом попадает в список желаний: интерфейс не «просто
-        # ищет», а ведёт тот же список, с которым работает команда `run`.
-        added = append_wish(self.settings.wishlist_file, query)
-
-        # Если такое желание уже описано в файле — берём его целиком, вместе с
-        # брендом, стоп-словами и потолком цены, а не голую строку запроса.
+        # Поиск через строку — разовый: список желаний он не пополняет. Иначе в
+        # списке оседали бы опечатки и разовые запросы, и команда `run` искала бы
+        # по ним при каждом обходе. Список ведётся осознанно — руками в файле.
+        #
+        # Но если товар в списке уже описан, берём описание целиком: с брендом,
+        # стоп-словами и потолком цены, а не голую строку запроса.
         wish = next(
             (
                 item
@@ -113,7 +113,10 @@ class BrowserWorker:
             "marketplace": "ozon",
             "items": items,
             "live": True,
-            "addedToWishlist": added,
+            "inWishlist": any(
+                item.query.strip().lower() == query.strip().lower()
+                for item in load_wishlist(self.settings.wishlist_file)
+            ),
             "wishlist": self.wishlist(),
         }
 

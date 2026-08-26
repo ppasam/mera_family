@@ -17,7 +17,7 @@ import typer
 
 from .adapters.ozon import OzonAdapter
 from .audit import Audit
-from .browser import ChallengeDetected, NotAuthenticated, Session, open_session
+from .browser import ChallengeDetected, NotAuthenticated, ProfileBusy, Session, open_session
 from .config import Settings, load_wishlist
 from .models import PurchaseStage, WishItem
 from .present import ask_choice, console, show_offers
@@ -141,10 +141,13 @@ async def _walk(wishes: list[WishItem], *, top: int, limit: int, buy: bool) -> N
                     await asyncio.sleep(pause)
                 await _offer_one(session, wish, adapter, audit, top=top, limit=limit, buy=buy)
 
-    except NotAuthenticated as exc:
+    except (NotAuthenticated, ChallengeDetected, ProfileBusy) as exc:
         console.print(f"[yellow]{exc}[/yellow]")
-    except ChallengeDetected as exc:
-        console.print(f"[yellow]{exc}[/yellow]")
+    except Exception as exc:
+        # Витрина могла измениться, сеть отвалиться, браузер закрыться руками.
+        # Клиенту нужна причина, а не трейсбек изнутри драйвера.
+        console.print(f"[red]Не удалось завершить обход: {exc}[/red]")
+        console.print("[dim]Повторите позже; если повторяется — смотрите журнал действий.[/dim]")
 
 
 async def _offer_one(

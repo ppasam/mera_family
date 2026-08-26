@@ -40,6 +40,10 @@ class NotAuthenticated(RuntimeError):
     """В профиле нет активной сессии клиента — нужен `wishlist login`."""
 
 
+class ProfileBusy(RuntimeError):
+    """Профиль браузера занят другим запуском модуля."""
+
+
 @dataclass(slots=True)
 class Session:
     context: BrowserContext
@@ -97,15 +101,26 @@ async def open_session(settings: Settings, *, require_auth: bool = True) -> Asyn
     profile: Path = settings.browser_profile
 
     async with async_playwright() as pw:
-        context = await pw.chromium.launch_persistent_context(
-            user_data_dir=str(profile),
-            channel="chrome",  # настоящий Chrome, не Chromium из поставки
-            headless=not settings.headful,
-            no_viewport=True,
-            locale="ru-RU",
-            timezone_id="Europe/Samara",
-            args=["--disable-blink-features=AutomationControlled"],
-        )
+        try:
+            context = await pw.chromium.launch_persistent_context(
+                user_data_dir=str(profile),
+                channel="chrome",  # настоящий Chrome, не Chromium из поставки
+                headless=not settings.headful,
+                no_viewport=True,
+                locale="ru-RU",
+                timezone_id="Europe/Samara",
+                args=["--disable-blink-features=AutomationControlled"],
+            )
+        except Exception as exc:
+            # Профиль браузера один, и держать его может только один процесс.
+            # Обычная причина — параллельно запущен `wishlist serve`; без этой
+            # проверки клиент увидел бы невнятный трейсбек изнутри драйвера.
+            raise ProfileBusy(
+                f"не удалось открыть браузер с профилем {profile}.\n"
+                "Скорее всего, модуль уже запущен в другом окне — например, "
+                "командой `wishlist serve`. Закройте его и повторите.\n"
+                f"Исходная ошибка: {exc}"
+            ) from exc
         page = context.pages[0] if context.pages else await context.new_page()
         session = Session(context=context, page=page, settings=settings)
         try:

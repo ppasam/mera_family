@@ -79,8 +79,23 @@ def test_price_is_whole_rubles(offers):
     assert Decimal(item["price"]) == offers[0].price
 
 
+def test_search_does_not_touch_wishlist():
+    """Поиск через строку — разовый: список желаний он не меняет.
+
+    Иначе в списке оседали бы опечатки и разовые запросы, и обход командой `run`
+    искал бы по ним каждый раз.
+    """
+    import inspect
+
+    from wishlist_buyer import server
+
+    source = inspect.getsource(server.BrowserWorker._search)
+    assert "append_wish" not in source, "поиск не должен дописывать желания"
+    assert "load_wishlist" in source, "но описание уже существующего желания брать обязан"
+
+
 def test_wish_can_be_added_and_removed(tmp_path):
-    """Список пополняется каждым поиском, поэтому убрать лишнее должно быть можно."""
+    """Список ведётся отдельно от поиска — руками или командами."""
     from wishlist_buyer.config import append_wish, load_wishlist, remove_wish
 
     path = tmp_path / "wishlist.yaml"
