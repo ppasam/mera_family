@@ -104,4 +104,4 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/ -q
 
 ## Лицензия
 
-> Определить до публикации.
+MIT — см. [LICENSE](LICENSE).
