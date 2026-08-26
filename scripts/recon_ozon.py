@@ -21,8 +21,8 @@ from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from wishlist_buyer.browser import ChallengeDetected, open_session  # noqa: E402
-from wishlist_buyer.config import Settings  # noqa: E402
+from wishlist_buyer.browser import ChallengeDetected, open_session
+from wishlist_buyer.config import Settings
 
 FIXTURES = Path(__file__).resolve().parents[1] / "tests" / "fixtures"
 COMPOSER = re.compile(r"composer-api\.bx/page/json")

@@ -13,10 +13,10 @@ from __future__ import annotations
 
 import asyncio
 import random
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import AsyncIterator
 
 from patchright.async_api import BrowserContext, Page, async_playwright
 
@@ -99,7 +99,7 @@ async def open_session(settings: Settings, *, require_auth: bool = True) -> Asyn
     async with async_playwright() as pw:
         context = await pw.chromium.launch_persistent_context(
             user_data_dir=str(profile),
-            channel="chrome",             # настоящий Chrome, не Chromium из поставки
+            channel="chrome",  # настоящий Chrome, не Chromium из поставки
             headless=not settings.headful,
             no_viewport=True,
             locale="ru-RU",

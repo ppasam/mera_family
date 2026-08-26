@@ -127,6 +127,4 @@ def matches(offer: Offer, wish: WishItem) -> bool:
         return False
     if wish.max_price is not None and offer.price > wish.max_price:
         return False
-    if not offer.in_stock:
-        return False
-    return True
+    return offer.in_stock

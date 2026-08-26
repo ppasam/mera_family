@@ -54,7 +54,12 @@ def show_offers(wish: WishItem, scored: list[ScoredOffer]) -> None:
         body.add_row("Ссылка", Text(str(offer.url), style="dim underline"))
 
         console.print(
-            Panel(body, title=f"[bold]{index}. {offer.title}", title_align="left", border_style="blue")
+            Panel(
+                body,
+                title=f"[bold]{index}. {offer.title}",
+                title_align="left",
+                border_style="blue",
+            )
         )
 
 

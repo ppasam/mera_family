@@ -12,7 +12,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
 
 from .models import Offer, ScoredOffer
 
@@ -33,7 +32,12 @@ def _normalize_low_is_good(value: float, low: float, high: float) -> float:
     return max(0.0, min(1.0, (high - value) / (high - low)))
 
 
-def rank(offers: list[Offer], *, top: int = 3, weights: Weights = Weights()) -> list[ScoredOffer]:
+DEFAULT_WEIGHTS = Weights()
+
+
+def rank(
+    offers: list[Offer], *, top: int = 3, weights: Weights = DEFAULT_WEIGHTS
+) -> list[ScoredOffer]:
     """Возвращает лучшие предложения с обоснованием и предупреждениями."""
     if not offers:
         return []
@@ -47,12 +51,10 @@ def rank(offers: list[Offer], *, top: int = 3, weights: Weights = Weights()) -> 
     max_reviews = max(reviews) if reviews else 0
 
     cheapest = min(offers, key=lambda o: o.price)
-    fastest = (
-        min(
-            (o for o in offers if o.delivery and o.delivery.days is not None),
-            key=lambda o: o.delivery.days,
-            default=None,
-        )
+    fastest = min(
+        (o for o in offers if o.delivery and o.delivery.days is not None),
+        key=lambda o: o.delivery.days,
+        default=None,
     )
 
     scored: list[ScoredOffer] = []
@@ -110,7 +112,9 @@ def rank(offers: list[Offer], *, top: int = 3, weights: Weights = Weights()) -> 
             diff = offer.price_without_card - offer.price
             warnings.append(f"цена указана с картой Ozon; без неё дороже на {diff:.0f} ₽")
 
-        scored.append(ScoredOffer(offer=offer, score=round(score, 4), reasons=reasons, warnings=warnings))
+        scored.append(
+            ScoredOffer(offer=offer, score=round(score, 4), reasons=reasons, warnings=warnings)
+        )
 
     scored.sort(key=lambda s: s.score, reverse=True)
     return scored[:top]

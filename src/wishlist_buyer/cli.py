@@ -51,7 +51,9 @@ def login() -> None:
             )
             for _ in range(120):  # до 10 минут ожидания
                 if await session.is_authenticated():
-                    console.print("[green]Вход выполнен, сессия сохранена в профиле модуля.[/green]")
+                    console.print(
+                        "[green]Вход выполнен, сессия сохранена в профиле модуля.[/green]"
+                    )
                     return
                 await asyncio.sleep(5)
             console.print("[yellow]Вход не завершён — сессия не появилась.[/yellow]")
@@ -84,7 +86,9 @@ def buy(
 @app.command()
 def run(
     wishlist_file: Annotated[Path | None, typer.Option(help="Файл списка желаний")] = None,
-    buy_mode: Annotated[bool, typer.Option("--buy", help="Предлагать покупку по каждому пункту")] = False,
+    buy_mode: Annotated[
+        bool, typer.Option("--buy", help="Предлагать покупку по каждому пункту")
+    ] = False,
 ) -> None:
     """Проходит весь список желаний клиента."""
     settings = _settings()

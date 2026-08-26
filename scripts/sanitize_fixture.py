@@ -23,7 +23,16 @@ from pathlib import Path
 
 # Поля-идентификаторы, значение которых заменяется заглушкой.
 # `typographyToken` в список не входит: это имя стиля текста, а не идентификатор.
-SENSITIVE = {"userToken", "pageToken", "requestID", "key", "advertLite", "advert", "widgetToken", "uid"}
+SENSITIVE = {
+    "userToken",
+    "pageToken",
+    "requestID",
+    "key",
+    "advertLite",
+    "advert",
+    "widgetToken",
+    "uid",
+}
 
 PLACEHOLDER = "REDACTED"
 

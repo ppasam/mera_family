@@ -45,7 +45,8 @@ class Seller(BaseModel):
         default=False, description="Сам маркетплейс или официальный магазин бренда"
     )
     brand_verified: bool = Field(
-        default=False, description="Витрина показала знак «Бренд проверен» — это про бренд, не про продавца"
+        default=False,
+        description="Витрина показала знак «Бренд проверен» — это про бренд, не про продавца",
     )
 
 

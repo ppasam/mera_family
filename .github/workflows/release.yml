@@ -1,0 +1,69 @@
+name: Release
+
+# Релиз собирается по тегу вида v0.1.0. Деплоя у модуля нет — он запускается на
+# машине клиента вместе с его браузером, — поэтому «доставка» здесь означает
+# собранный пакет, приложенный к релизу на GitHub.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    name: Проверка перед релизом
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Установка пакета
+        run: pip install -e ".[dev]"
+
+      - name: Тесты
+        run: pytest -q
+
+      - name: Фикстуры без следов сессии
+        run: python scripts/check_fixtures.py
+
+  build:
+    name: Сборка и публикация релиза
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Сборка пакета
+        run: |
+          pip install build
+          python -m build
+
+      - name: Проверка, что версия пакета совпадает с тегом
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version=$(python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          if [ "$tag" != "$version" ]; then
+            echo "Тег $tag не совпадает с версией в pyproject.toml ($version)"
+            exit 1
+          fi
+          echo "Версия совпадает: $version"
+
+      - name: Артефакты сборки
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Релиз на GitHub
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --generate-notes

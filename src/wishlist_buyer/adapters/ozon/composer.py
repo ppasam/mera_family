@@ -121,9 +121,7 @@ def parse_tile(tile: dict[str, Any]) -> Offer | None:
                     price_original = value
                 elif price is None:
                     price = value
-            is_card_price = (
-                block["priceV2"].get("priceStyle", {}).get("styleType") == "CARD_PRICE"
-            )
+            is_card_price = block["priceV2"].get("priceStyle", {}).get("styleType") == "CARD_PRICE"
         elif kind == "textDS" and block.get("id") == "name":
             title = block["textDS"].get("text")
         elif kind == "labelListV2":

@@ -38,7 +38,12 @@ class Audit:
             {
                 "query": wish.query,
                 "offers": [
-                    {"sku": s.offer.sku, "title": s.offer.title, "price": s.offer.price, "score": s.score}
+                    {
+                        "sku": s.offer.sku,
+                        "title": s.offer.title,
+                        "price": s.offer.price,
+                        "score": s.score,
+                    }
                     for s in scored
                 ],
             },
@@ -47,7 +52,11 @@ class Audit:
     def chosen(self, wish: WishItem, scored: ScoredOffer | None) -> None:
         self._write(
             "chosen",
-            {"query": wish.query, "sku": scored.offer.sku if scored else None, "declined": scored is None},
+            {
+                "query": wish.query,
+                "sku": scored.offer.sku if scored else None,
+                "declined": scored is None,
+            },
         )
 
     def purchase(self, attempt: PurchaseAttempt) -> None:

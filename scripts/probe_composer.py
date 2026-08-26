@@ -4,10 +4,15 @@
 Запрос уходит same-origin — с настоящими куками и заголовками браузера,
 поэтому антибот видит обычное поведение SPA, а не сторонний запрос.
 """
+
 from __future__ import annotations
-import asyncio, json, sys
+
+import asyncio
+import json
+import sys
 from pathlib import Path
 from urllib.parse import quote
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from wishlist_buyer.browser import open_session
 from wishlist_buyer.config import Settings
@@ -23,6 +28,7 @@ async (path) => {
 }
 """
 
+
 async def main(query: str) -> int:
     settings = Settings()
     FIXTURES.mkdir(parents=True, exist_ok=True)
@@ -34,7 +40,8 @@ async def main(query: str) -> int:
         res = await s.page.evaluate(JS, path)
         print("HTTP:", res["status"], "| длина ответа:", len(res["text"]))
         if res["status"] != 200:
-            print(res["text"][:600]); return 1
+            print(res["text"][:600])
+            return 1
         data = json.loads(res["text"])
         out = FIXTURES / "ozon-composer-search.json"
         out.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -45,6 +52,7 @@ async def main(query: str) -> int:
         for key in states:
             print(f"  {key:<50} {len(states[key]):>8} симв.")
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(asyncio.run(main(sys.argv[1] if len(sys.argv) > 1 else "омега 3 solgar")))
